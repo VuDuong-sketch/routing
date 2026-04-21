@@ -1,0 +1,36 @@
+{
+  "routers": ["A", "B"],
+  "clients": ["a"],
+  "client_send_rate": 10,
+  "end_time": 100,
+
+  "links": [
+    ["A","a", 1, 1, 1, 1],
+    ["A","B", 2, 1, 1, 1]
+  ],
+
+  "changes": [],
+
+  "correct_routes": [
+  ],
+
+  "visualize": {
+    "grid_size": 3,
+    "locations": {
+      "A":[1,0],
+      "a":[0,0],
+      "B":[1,1]
+    },
+    "canvas_width": 800,
+    "canvas_height": 800,
+    "time_multiplier": 20,
+    "latency_correction": 1.5,
+    "animate_rate": 40,
+    "router_color": "red",
+    "client_color": "DodgerBlue2",
+    "line_color": "orange",
+    "inactiveColor": "gray",
+    "line_width": 6,
+    "line_font_size": 16
+  }
+}
