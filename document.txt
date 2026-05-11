@@ -1,0 +1,31 @@
+Cấu trúc bảng định tuyến:
+
+các cột: dst, neighbor, port, distance
+
+chú thích:
+  dst: điểm cuối (addr)
+  neighbor: điểm tiếp theo sẽ chuyển đến (addr)
+  port: số cổng ứng với neighbor
+  distance: tổng khoảng cách đến dst
+
+ví dụ: table = {
+  "B": {
+    "neighbor": "C",
+    "port": 2,
+    "distance": 3
+  }
+
+  "C": {
+    "neighbor": "A",
+    "port": 1,
+    "distance": 2
+  }
+}
+
+
+Cấu trúc bảng khoảng cách lân cận:
+
+chú thích:
+  neighbor: điểm lân cận (addr)
+  port: số cổng ứng với neighbor
+  distance: khoảng cách trực tiếp đến nó

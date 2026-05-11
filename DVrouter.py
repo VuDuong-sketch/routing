@@ -4,9 +4,12 @@
 # HUID:
 #####################################################
 
+import json
+
 from router import Router
 from packet import Packet
 from link import Link
+from forwardingTable import ForwardingTable, NeighborDistances
 
 
 class DVrouter(Router):
@@ -23,6 +26,13 @@ class DVrouter(Router):
         self.last_time = 0
         # TODO
         #   add your own class fields and initialization code here
+        
+        self.neighborDistances = NeighborDistances()    # bảng khoảng cách đến các router lân cận
+        self.neighborDistances.add(self.addr, None, 0)  # khoảng cách tới chính mình là 0
+
+        self.forwardingTable = ForwardingTable()        # bảng định tuyến
+        self.forwardingTable.add(self.addr, self.addr, None, 0)
+
         pass
 
     def handle_packet(self, port, packet):
@@ -51,9 +61,24 @@ class DVrouter(Router):
             #   update the forwarding table
             #   broadcast the distance vector of this router to neighbors
 
+            neighborAddr = packet.src_addr
+            neighborTable = ForwardingTable.toTable(packet.content)
+            isChanged = False
 
-            # self.send(port, Packet(2, None, None, "Hello"))
-            pass
+            # kiểm tra xem có tìm được đường ngắn hơn đến các điểm không
+            for dst in neighborTable:
+
+                # Nếu AB + B->C < A->C (hoặc là chưa có A->C)  => A->C = AB + B->C (cập nhật khoảng cách)
+                if not(dst in self.forwardingTable.table) or self.neighborDistances.table[neighborAddr]["distance"] + neighborTable[dst]["distance"] < self.forwardingTable.table[dst]["distance"]:
+                    self.forwardingTable.add(dst, neighborAddr, port, self.neighborDistances.table[neighborAddr]["distance"] + neighborTable[dst]["distance"])
+                    isChanged = True
+
+
+            # nếu thay đổi bảng định tuyến thì thông báo cho router lân cận
+            if isChanged:
+                for port in self.links:
+                    packet = Packet(Packet.ROUTING, self.addr, None, self.forwardingTable.toString())
+                    self.send(port, packet)
 
     def handle_new_link(self, port, endpoint, cost):
         """Handle new link."""
@@ -62,9 +87,16 @@ class DVrouter(Router):
         #   update the forwarding table
         #   broadcast the distance vector of this router to neighbors
 
+        # add khoảng cách đến router mới vào bảng
+        self.neighborDistances.add(endpoint, port, cost)
 
-        # if ('A' <= endpoint and endpoint <= 'Z'): # endpoint là router
-        #     self.send(port, Packet(2, None, None, "Hello"))
+        # add luôn vào bảng định tuyến
+        self.forwardingTable.add(endpoint, endpoint, port, cost)
+
+        # gửi bảng định tuyến cho các router lân cận
+        for port in self.links:
+            packet = Packet(Packet.ROUTING, self.addr, None, self.forwardingTable.toString())
+            self.send(port, packet)
 
     def handle_remove_link(self, port):
         """Handle removed link."""
@@ -76,17 +108,22 @@ class DVrouter(Router):
 
     def handle_time(self, time_ms):
         """Handle current time."""
+        
         if time_ms - self.last_time >= self.heartbeat_time:
             self.last_time = time_ms
             # TODO
             #   broadcast the distance vector of this router to neighbors
-            pass
+
+            # gửi bảng định tuyến định kỳ cho router lân cận
+            for port in self.links:
+                packet = Packet(Packet.ROUTING, self.addr, None, self.forwardingTable.toString())
+                self.send(port, packet)
+
+            print(self.addr, json.dumps(self.neighborDistances.table, indent=2, sort_keys=True))
+            print(self.addr, json.dumps(self.forwardingTable.table, indent=2, sort_keys=True))
 
     def __repr__(self):
         """Representation for debugging in the network visualizer."""
         # TODO
         #   NOTE This method is for your own convenience and will not be graded
         return f"DVrouter(addr={self.addr})"
-
-
-# Nhat dep trai da commit
