@@ -17,8 +17,6 @@ class DVrouter(Router):
     override.
     """
 
-    INFINITY = 1000
-
     def __init__(self, addr, heartbeat_time):
         Router.__init__(self, addr)  # Initialize base class - DO NOT REMOVE
         self.heartbeat_time = heartbeat_time
@@ -26,14 +24,19 @@ class DVrouter(Router):
         # TODO
         #   add your own class fields and initialization code here
 
-        self.neighbor_distances = { # bảng khoảng cách đến các router lân cận indexed by neighbor address
+        self.ports = {}              # port indexed by neighbor
+        self.neighbors = {}          # neighbor indexed by port
+
+        self.INFINITY = 1000
+
+        self.neighbor_distances = {  # bảng khoảng cách đến các router (kể cả client) lân cận indexed by neighbor address
             self.addr: {
                 "port": None,
-                "distance": 0       # khoảng cách tới chính mình là 0
+                "distance": 0        # khoảng cách tới chính mình là 0
             }
         }
 
-        self.forwarding_table = { # bảng định tuyến indexed by dest address
+        self.forwarding_table = {    # bảng định tuyến indexed by dest address
             self.addr: {
                 "next hop": self.addr,
                 "port": None,
@@ -41,11 +44,7 @@ class DVrouter(Router):
             }
         }
 
-        self.neighbor_tables = {} # bảng định tuyến của hàng xóm indexed by neighbor address
-
-        self.ports = {}     # port indexed by neighbor
-        self.neighbors = {} # neighbor indexed by port
-
+    # gửi bảng định tuyến cho các router lân cận
     def broadcast(self):
         for port in self.links:
             # chỉ gửi cho router, không gửi cho client
@@ -73,7 +72,6 @@ class DVrouter(Router):
 
             neighbor = packet.src_addr
             neighbor_table = json.loads(packet.content)
-            self.neighbor_tables[neighbor] = neighbor_table  # add bảng định tuyến của hàng xóm này
             is_changed = False
 
             # kiểm tra xem có tìm được đường ngắn hơn đến các điểm không
@@ -93,8 +91,6 @@ class DVrouter(Router):
                     }
                     is_changed = True
 
-
-            # nếu thay đổi bảng định tuyến thì thông báo cho router lân cận
             if is_changed:
                 self.broadcast()
 
@@ -126,7 +122,6 @@ class DVrouter(Router):
             }
             is_changed = True
 
-        # gửi bảng định tuyến cho các router lân cận
         if is_changed:
             self.broadcast()
 
@@ -141,16 +136,18 @@ class DVrouter(Router):
         neighbor = self.neighbors[port]
         del self.ports[neighbor]
         del self.neighbors[port]
-
         del self.neighbor_distances[neighbor]   # xóa khoảng cách trực tiếp đến neighbor
-        del self.neighbor_tables[neighbor]      # xóa bảng định tuyến của neighbor đó
+
+        is_changed = False
 
         # nếu đến dst nào mà cần đi qua neighbor bị gỡ => khoảng cách = INFINITY
         for dst in self.forwarding_table:
             if self.forwarding_table[dst]["next hop"] == neighbor:
                 self.forwarding_table[dst]["distance"] = self.INFINITY
+                is_changed = True
         
-        self.broadcast()
+        if is_changed:
+            self.broadcast()
             
 
     def handle_time(self, time_ms):
@@ -161,7 +158,7 @@ class DVrouter(Router):
             # TODO
             #   broadcast the distance vector of this router to neighbors
 
-            # gửi bảng định tuyến định kỳ cho router lân cận
+            # gửi bảng định tuyến định kỳ cho các router lân cận
             self.broadcast()
 
     def __repr__(self):
